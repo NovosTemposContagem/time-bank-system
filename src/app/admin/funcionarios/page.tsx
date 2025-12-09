@@ -20,9 +20,20 @@ export default function EmployeesPage() {
     const [importMsg, setImportMsg] = useState('');
 
     const fetchData = async () => {
-        fetch('/api/employees').then(res => res.json()).then(setEmployees);
-        fetch('/api/units').then(res => res.json()).then(setUnits);
-        fetch('/api/roles').then(res => res.json()).then(setRoles);
+        try {
+            const [empRes, unitRes, roleRes] = await Promise.all([
+                fetch('/api/employees'),
+                fetch('/api/units'),
+                fetch('/api/roles')
+            ]);
+
+            if (empRes.ok) setEmployees(await empRes.json());
+            if (unitRes.ok) setUnits(await unitRes.json());
+            if (roleRes.ok) setRoles(await roleRes.json());
+        } catch (error) {
+            console.error(error);
+            setMsg('Erro ao carregar dados. Verifique sua conexão.');
+        }
     };
 
     useEffect(() => {
@@ -53,26 +64,32 @@ export default function EmployeesPage() {
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
-        setMsg('');
+        setMsg('Salvando...');
 
-        const cleanForm = {
-            ...form,
-            cpf: form.cpf.replace(/\D/g, '')
-        };
+        try {
+            const cleanForm = {
+                ...form,
+                cpf: form.cpf.replace(/\D/g, '')
+            };
 
-        const res = await fetch('/api/employees', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(cleanForm),
-        });
+            const res = await fetch('/api/employees', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cleanForm),
+            });
 
-        if (res.ok) {
-            setForm({ name: '', cpf: '', unitId: '', roleId: '' });
-            fetchData();
-            setMsg('Funcionário criado!');
-            setTimeout(() => setMsg(''), 3000);
-        } else {
-            setMsg('Erro ao criar (CPF já existe ou inválido).');
+            if (res.ok) {
+                setForm({ name: '', cpf: '', unitId: '', roleId: '' });
+                fetchData();
+                setMsg('Funcionário criado!');
+                setTimeout(() => setMsg(''), 3000);
+            } else {
+                const data = await res.json().catch(() => ({}));
+                setMsg(`Erro ao criar: ${data.error || 'Erro no servidor'}`);
+            }
+        } catch (error) {
+            console.error(error);
+            setMsg('Erro de conexão. Tente novamente.');
         }
     };
 
