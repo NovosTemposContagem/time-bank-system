@@ -30,11 +30,20 @@ export default function LoginPage() {
                     router.push('/admin/dashboard');
                 }
             } else {
-                const data = await res.json();
-                setError(data.message || 'Login falhou. Verifique suas credenciais.');
+                let errorMessage = 'Login falhou. Verifique suas credenciais.';
+                try {
+                    const data = await res.json();
+                    if (data.message) errorMessage = data.message;
+                } catch {
+                    // Could not parse JSON, probably HTML error page (500)
+                    console.error('Non-JSON error response:', res.status, res.statusText);
+                    errorMessage = `Erro no servidor (${res.status}). Tente novamente.`;
+                }
+                setError(errorMessage);
             }
-        } catch {
-            setError('Erro de conexão.');
+        } catch (err) {
+            console.error('Login error:', err);
+            setError('Erro de conexão. Verifique sua internet.');
         }
     };
 
