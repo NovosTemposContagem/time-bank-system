@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import styles from '../dashboard/dashboard.module.css';
 
 export default function RolesPage() {
     const [roles, setRoles] = useState<any[]>([]);
     const [newName, setNewName] = useState('');
+    const [msg, setMsg] = useState('');
 
     const fetchRoles = () => {
         fetch('/api/roles')
@@ -18,15 +19,51 @@ export default function RolesPage() {
         fetchRoles();
     }, []);
 
+    const handleDelete = async (id: number) => {
+        if (!confirm('Tem certeza que deseja excluir este cargo?')) return;
+
+        try {
+            const res = await fetch(`/api/roles/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                setMsg('Cargo excluído com sucesso!');
+                fetchRoles();
+                setTimeout(() => setMsg(''), 3000);
+            } else {
+                const data = await res.json();
+                setMsg(`Erro ao excluir: ${data.error || 'Erro desconhecido'}`);
+            }
+        } catch (error) {
+            console.error(error);
+            setMsg('Erro de conexão.');
+        }
+    };
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
-        await fetch('/api/roles', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: newName }),
-        });
-        setNewName('');
-        fetchRoles();
+        setMsg('');
+
+        try {
+            const res = await fetch('/api/roles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName }),
+            });
+
+            if (res.ok) {
+                setNewName('');
+                fetchRoles();
+                setMsg('Cargo criado!');
+                setTimeout(() => setMsg(''), 3000);
+            } else {
+                setMsg('Erro ao criar cargo.');
+            }
+        } catch (error) {
+            console.error(error);
+            setMsg('Erro de conexão.');
+        }
     };
 
     return (
@@ -47,12 +84,20 @@ export default function RolesPage() {
                         <Plus size={18} /> Adicionar
                     </button>
                 </form>
+                {msg && <p style={{ marginTop: '1rem', color: msg.includes('Erro') ? 'var(--danger)' : 'var(--success)' }}>{msg}</p>}
             </div>
 
             <div className={styles.grid}>
                 {roles.map(role => (
                     <div key={role.id} className={styles.card} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className={styles.empName}>{role.name}</span>
+                        <button
+                            onClick={() => handleDelete(role.id)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgb(220, 38, 38)' }}
+                            title="Excluir"
+                        >
+                            <Trash2 size={18} />
+                        </button>
                     </div>
                 ))}
             </div>

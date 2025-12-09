@@ -9,6 +9,7 @@ export default function UnitsPage() {
     const [loading, setLoading] = useState(true);
     const [newName, setNewName] = useState('');
     const [newAddress, setNewAddress] = useState('');
+    const [msg, setMsg] = useState('');
 
     const fetchUnits = () => {
         fetch('/api/units')
@@ -23,20 +24,53 @@ export default function UnitsPage() {
         fetchUnits();
     }, []);
 
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        await fetch('/api/units', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: newName, address: newAddress }),
-        });
-        setNewName('');
-        setNewAddress('');
-        fetchUnits();
+    const handleDelete = async (id: number) => {
+        if (!confirm('Tem certeza que deseja excluir este local?')) return;
+
+        try {
+            const res = await fetch(`/api/units/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                setMsg('Local excluído com sucesso!');
+                fetchUnits();
+                setTimeout(() => setMsg(''), 3000);
+            } else {
+                const data = await res.json();
+                setMsg(`Erro ao excluir: ${data.error || 'Erro desconhecido'}`);
+            }
+        } catch (error) {
+            console.error(error);
+            setMsg('Erro de conexão.');
+        }
     };
 
-    // Delete implementation skipped for brevity/safety unless requested, but added UI hook
-    // const handleDelete = ...
+    const handleCreate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setMsg('');
+
+        try {
+            const res = await fetch('/api/units', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName, address: newAddress }),
+            });
+
+            if (res.ok) {
+                setNewName('');
+                setNewAddress('');
+                fetchUnits();
+                setMsg('Local criado!');
+                setTimeout(() => setMsg(''), 3000);
+            } else {
+                setMsg('Erro ao criar local.');
+            }
+        } catch (error) {
+            console.error(error);
+            setMsg('Erro de conexão.');
+        }
+    };
 
     return (
         <div>
@@ -62,18 +96,27 @@ export default function UnitsPage() {
                         <Plus size={18} /> Adicionar
                     </button>
                 </form>
+                {msg && <p style={{ marginTop: '1rem', color: msg.includes('Erro') ? 'var(--danger)' : 'var(--success)' }}>{msg}</p>}
             </div>
 
             <div className={styles.grid}>
                 {units.map(unit => (
-                    <div key={unit.id} className={styles.card}>
-                        <div className={styles.cardHeader}>
-                            <span className={styles.empName}>{unit.name}</span>
+                    <div key={unit.id} className={styles.card} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <div className={styles.cardHeader}>
+                                <span className={styles.empName}>{unit.name}</span>
+                            </div>
+                            <div className={styles.cardBody}>
+                                <p className={styles.desc}>{unit.address || 'Sem endereço'}</p>
+                            </div>
                         </div>
-                        <div className={styles.cardBody}>
-                            <p className={styles.desc}>{unit.address || 'Sem endereço'}</p>
-                        </div>
-                        {/* <button><Trash2 size={16}/></button> */}
+                        <button
+                            onClick={() => handleDelete(unit.id)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgb(220, 38, 38)' }}
+                            title="Excluir"
+                        >
+                            <Trash2 size={18} />
+                        </button>
                     </div>
                 ))}
             </div>
