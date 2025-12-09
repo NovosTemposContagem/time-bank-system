@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, Trash2 } from 'lucide-react';
 import styles from '../dashboard/dashboard.module.css';
 import * as XLSX from 'xlsx';
 
@@ -28,6 +28,28 @@ export default function EmployeesPage() {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const handleDelete = async (id: number) => {
+        if (!confirm('Tem certeza que deseja excluir este funcionário?')) return;
+
+        try {
+            const res = await fetch(`/api/employees/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                setMsg('Funcionário excluído com sucesso!');
+                fetchData();
+                setTimeout(() => setMsg(''), 3000);
+            } else {
+                const data = await res.json();
+                setMsg(`Erro ao excluir: ${data.error || 'Erro desconhecido'}`);
+            }
+        } catch (error) {
+            console.error('Error deleting:', error);
+            setMsg('Erro de conexão ao tentar excluir.');
+        }
+    };
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -70,12 +92,11 @@ export default function EmployeesPage() {
                 const ws = wb.Sheets[wsname];
                 const data: any[] = XLSX.utils.sheet_to_json(ws);
 
-                // Expected columns: NOME, CPF (case insensitive usually, but let's assume accurate)
-                // Map to our structure
+                // Expected columns: NOME, CPF
                 const mapped = data.map(row => ({
                     name: row['NOME'] || row['Nome'] || row['name'],
-                    cpf: String(row['CPF'] || row['Cpf'] || row['cpf']).replace(/\D/g, '') // sanitize CPF
-                })).filter(r => r.name && r.cpf); // Valid rows only
+                    cpf: String(row['CPF'] || row['Cpf'] || row['cpf']).replace(/\D/g, '')
+                })).filter(r => r.name && r.cpf);
 
                 if (mapped.length === 0) {
                     setImportMsg('Nenhum dado válido encontrado. Verifique as colunas NOME e CPF.');
@@ -248,6 +269,7 @@ export default function EmployeesPage() {
                             <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>CPF</th>
                             <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Cargo</th>
                             <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Unidade</th>
+                            <th style={{ padding: '1rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -257,6 +279,15 @@ export default function EmployeesPage() {
                                 <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{emp.cpf}</td>
                                 <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{emp.role?.name}</td>
                                 <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{emp.unit?.name}</td>
+                                <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                    <button
+                                        onClick={() => handleDelete(emp.id)}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgb(220, 38, 38)' }}
+                                        title="Excluir"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
